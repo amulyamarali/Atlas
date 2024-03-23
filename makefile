@@ -1,4 +1,2 @@
-.PHONY: push
-
 push:
-    git push noclue master
+        git push noclue master

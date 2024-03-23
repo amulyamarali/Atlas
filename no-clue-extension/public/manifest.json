@@ -1,0 +1,19 @@
+{
+    "manifest_version": 3,
+    "version": "1.0.0",
+    "name": "My vite",
+    "action": {
+        "default_popup": "index.html"
+    },
+    "permissions": [
+        "activeTab",
+        "scripting"
+      ],
+    "host_permissions": [
+        "http:///",
+        "https:///"
+    ],
+    "icons":{
+        "32": "vite.svg"
+    }
+}
