@@ -7,17 +7,6 @@ chrome.tabs.onActivated.addListener((tab) => {
       target: { tabId: currTab },
       files: ["content.js"],
     });
-                                                  
-    //injecting scripts have a small delay so just in case sleep for 2 sec
-    // setTimeout(()=>{
-    //   chrome.tabs.sendMessage(
-    //     currTab,
-    //     'Hello & welcome to background',
-    //     (res)=>{
-    //       console.log(res);
-    //     }
-    //   )
-    // }, 2000);
   }
 });
 
@@ -27,7 +16,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendRes) => {
   sendRes("Hello from background");
 });
 
-// chrome.runtime.onMessage.addListener((msg, sender, sendRes)=>{
-//   console.log(`Recieved from ${sender} -->`, JSON.parse(msg)),
-//   sendRes("'got'");
-// })
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === "getCurrentTabUrl") {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      const currentTab = tabs[0];
+      const currentUrl = currentTab.url;
+      sendResponse({ url: currentUrl });
+    });
+    return true; // To indicate that sendResponse will be called asynchronously
+  }
+});

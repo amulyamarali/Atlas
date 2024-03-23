@@ -1,24 +1,32 @@
-console.log("contentScript working");
-// chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-//   if (message.selectedText) {
-//     alert('Selected text: ' + message.selectedText);
-//   }
-// });
-alert("Hello There");
+console.log('concept')
 
-// for sending msg to background
-chrome.runtime.sendMessage("Hello from content", (res) => {
-  console.log(res);
+//Highlighting
+document.addEventListener("mouseup", () => {
+  const selectedText = window.getSelection().toString().trim();
+  if (selectedText) {
+    const span = document.createElement("span");
+    span.classList.add("highlighted-text"); // Add a specific class
+    span.style.backgroundColor = "yellow";
+    const range = window.getSelection().getRangeAt(0);
+    range.surroundContents(span);
+    
+    chrome.runtime.sendMessage(
+      { action: "setSelectedText", text: selectedText },
+      (res) => {
+        console.log("Response from background script:", res);
+      }
+    );
+  }
 });
 
-// document.addEventListener("mouseup", () => {
-//   const selectedText = window.getSelection().toString().trim();
-//   if (selectedText) {
-//     chrome.runtime.sendMessage(
-//       JSON.stringify({ action: "setSelectedText", text: selectedText }),
-//       (res) => {
-//         alert("worked -->", res);
-//       }
-//     );
-//   }
-// });
+// Unhighlight text when clicked
+document.addEventListener("click", (event) => {
+  const clickedElement = event.target;
+  if (clickedElement.classList.contains("highlighted-text") ||
+      clickedElement.parentElement.classList.contains("highlighted-text")) { // Check for the specific class in parent element
+    const parentElement = clickedElement.closest('.highlighted-text');
+    const textNode = document.createTextNode(parentElement.textContent);
+    parentElement.parentElement.replaceChild(textNode, parentElement);
+    // Send message to remove highlighted text from storage if necessary
+  }
+});
