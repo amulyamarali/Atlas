@@ -1,7 +1,8 @@
 {
     "manifest_version": 3,
     "version": "1.0.0",
-    "name": "My vite",
+    "name": "Atlas-Notes",
+    "description": "For Research Papers, articles, or anything : Bring the ease to Note-taking",
     "action": {
         "default_popup": "index.html"
     },
@@ -9,11 +10,22 @@
         "activeTab",
         "scripting"
       ],
+      "background": {
+        "service_worker": "background.js"
+      },
+      "content_scripts": [
+        {
+          "matches": ["<all_urls>"],
+          "js": ["content.js"]
+        }
+      ],
     "host_permissions": [
         "http:///",
         "https:///"
     ],
     "icons":{
-        "32": "vite.svg"
+        "16": "atlas-logo.png",
+        "32": "atlas-logo.png",
+        "64": "atlas-logo.png"
     }
 }
