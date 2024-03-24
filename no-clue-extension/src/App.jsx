@@ -289,11 +289,12 @@ function App() {
 
   const translate = async () => {
     try {
-      const url = "https://7630-1-6-74-117.ngrok-free.app/translate"; 
-      const requestBody = { text: inputValue, lang: selectedLanguage };
+      const url = "https://cd2a-106-221-194-3.ngrok-free.app/translate"; 
+      const requestBody = { text: inputValue, lang1: selectedLanguage };
       const response = await axios.post(url, requestBody);
-      console.log(response.data.translation);
-      setTranslation(response.data.translation);
+      console.log(response.data.lang1);
+      setTranslation(response.data.lang1);
+      setInputValue(response.data.lang1);
     } catch (error) {
       console.error("Error translating text:", error);
     }
@@ -348,7 +349,7 @@ function App() {
                   <option value="hi">Hindi</option>
                   <option value="kn">Kannada</option>
                   <option value="ta">Tamil</option>
-                  <option value="t">Telegu</option>
+                  <option value="te">Telegu</option>
 
                 </select>
                 <input
