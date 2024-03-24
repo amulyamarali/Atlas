@@ -109,7 +109,8 @@ function App() {
         const messagesRef = collection(db, "messages");
         const snapshot = await getDocs(messagesRef);
         const messagesData = snapshot.docs.map((doc) => doc.data());
-        setMessages(messagesData);
+        const sortedMessages = messagesData.sort((a, b) => a.timestamp - b.timestamp);
+        setMessages(sortedMessages);
       } catch (error) {
         console.error("Error fetching messages:", error);
       }
@@ -174,7 +175,7 @@ function App() {
     setEditMode(true);
   };
 
-  const handleUrlSubmit = async (event) => {
+  const handleUrlChange = (event) => {
     // event.preventDefault();
 
     // try {
@@ -186,7 +187,8 @@ function App() {
     // } catch (error) {
     //   console.error('Error fetching data:', error);
     // }
-    setCurrUrl(event.target.elements.url.values);
+    console.log(event.target.value)
+    setCurrUrl(event.target.value);
   };
 
   /////////////
@@ -198,36 +200,51 @@ function App() {
   };
 
   const handleSubmit = async (event) => {
+    if(currUrl==""){
+      setMessages([...messages, {sender: 'bot', content: 'Please enter a valid URL in the prev section'}]);
+      setNewMessage({ sender: "user", content: "" });
+    }
     setGettingMsg(true);
     event.preventDefault();
     let botRes = {};
-    if (newMessage.content.trim() !== "") {
+    if (newMessage?.content?.trim() !== "") {
       event.preventDefault();
+      const timestamp = serverTimestamp();
 
       try {
-        const url = "https://7630-1-6-74-117.ngrok-free.app/chatbot";
-        const requestBody = { url: currUrl, query: newMessage.content };
+        const url = "https://cd2a-106-221-194-3.ngrok-free.app/chatbot";
+        const requestBody = {
+          url: currUrl,
+          query: newMessage.content,
+        };
 
         const response = await axios.post(url, requestBody);
         console.log("res-->", response.data);
-        botRes = { sender: "bot", content: response.data };
-        const timestamp = serverTimestamp();
+        botRes = { sender: "bot", content: response.data.message };
         await addDoc(collection(db, "messages"), {
           sender: "user",
-          content: inputValue,
+          content: newMessage.content,
           timestamp: timestamp,
         });
         await addDoc(collection(db, "messages"), {
           sender: "bot",
-          content: response.data,
+          content: response.data.message,
           timestamp: timestamp,
         });
       } catch (error) {
         botRes = { sender: "bot", content: "Something went wrong 😔" };
         console.error("Error fetching data:", error);
       }
-      setMessages([...messages, newMessage, botRes]);
-      setNewMessage({ sender: "user", content: "" });      
+      console.log("before set msg here");
+      setMessages([
+        ...messages,
+        { ...newMessage, timestamp: timestamp },
+        { ...botRes, timestamp: timestamp },
+      ]);
+      console.log("after set msg here");
+
+      setNewMessage({ sender: "user", content: "" });
+      console.log("after set msg here 2");
     }
     setGettingMsg(false);
   };
@@ -248,15 +265,15 @@ function App() {
         }}
         className="flex flex-col gap-3 items-center justify-center"
       >
-        <div className="w-full flex flex-row bg-white text-black rounded-md">
+        <div className="w-[80%] flex-row bg-white text-black rounded-md flex justify-center items-center">
           <div
-            className={`w-[50%] p-2 border-r-2 border-black cursor-pointer`}
+            className={`w-[40%] p-2 border-r-2 border-black cursor-pointer`}
             onClick={() => setSaveNote(true)}
           >
             Notes 📝
           </div>
           <div
-            className={`w-[50%] p-2 cursor-pointer`}
+            className={`w-[40%] p-2 cursor-pointer`}
             onClick={() => setSaveNote(false)}
           >
             Chat 🤖
@@ -265,23 +282,25 @@ function App() {
         {saveNote ? (
           <>
             <div className="w-full">
-              <form
-                onSubmit={handleUrlSubmit}
-                className=" flex flex-row justify-center items-center gap-5 mb-2"
-              >
-                <input
-                  type="text"
-                  name="url"
-                  placeholder="Enter URL"
-                  className="w-[300px] outline-none border-2 text-black border-slate-200 bg-white rounded-lg p-2 px-4"
-                />
+              <div className=" flex flex-row justify-center items-center gap-5 mb-2">
                 <button
                   type="submit"
                   className="p-2 px-4 border-2 border-[#e34848] rounded-lg bg-[#c7522a]"
                 >
+                  Lang
+                </button>
+                <input
+                  type="text"
+                  name="url"
+                  value={currUrl}
+                  onChange={handleUrlChange}
+                  placeholder="https://example.com"
+                  className="w-[300px] outline-none border-2 text-black border-slate-200 bg-white rounded-lg p-2 px-4"
+                />
+                <button className="p-2 px-4 border-2 border-[#e34848] rounded-lg bg-[#c7522a]">
                   Save
                 </button>
-              </form>
+              </div>
             </div>
             <div className="flex flex-row justify-center items-center gap-2">
               <div className="flex flex-row max-w-[350px] justify-start items-center overflow-x-auto gap-4 px-2">
@@ -325,7 +344,7 @@ function App() {
                 </>
               )}
             </div>
-            <div className="w-[425px] h-[250px] bg-white border-black p-3 rounded-lg">
+            <div className="w-[425px] h-[220px] bg-white border-black p-3 rounded-lg">
               {selectedNote ? (
                 editMode ? (
                   <textarea
