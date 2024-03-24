@@ -12,6 +12,9 @@ import {
   doc,
   serverTimestamp,
 } from "firebase/firestore";
+import axios from "axios";
+import { LuSend } from "react-icons/lu";
+import { Comment } from "react-loader-spinner";
 
 // const notes = [
 //   {
@@ -72,9 +75,10 @@ function App() {
   const [selectedNote, setSelectedNote] = useState(null);
   const [notes, setNotes] = useState([]);
   const [inputValue, setInputValue] = useState("");
-  const [editMode, setEditMode] = useState(true);
-  const [currUrl, setCurrUrl] = useState(window.location.href);
-  // console.log(window.location.href);
+  const [editMode, setEditMode] = useState(false);
+  const [currUrl, setCurrUrl] = useState("");
+  const [saveNote, setSaveNote] = useState(true);
+  const [gettingMsg, setGettingMsg] = useState(false);
 
   useEffect(() => {
     const fetchNotes = async () => {
@@ -100,8 +104,19 @@ function App() {
         console.error("Error fetching notes:", error);
       }
     };
+    const fetchMessages = async () => {
+      try {
+        const messagesRef = collection(db, "messages");
+        const snapshot = await getDocs(messagesRef);
+        const messagesData = snapshot.docs.map((doc) => doc.data());
+        setMessages(messagesData);
+      } catch (error) {
+        console.error("Error fetching messages:", error);
+      }
+    };
 
     fetchNotes();
+    fetchMessages();
   }, []);
 
   const handleInputChange = (event) => {
@@ -159,6 +174,64 @@ function App() {
     setEditMode(true);
   };
 
+  const handleUrlSubmit = async (event) => {
+    // event.preventDefault();
+
+    // try {
+    //   const url = "https://7630-1-6-74-117.ngrok-free.app/chatbot";
+    //   const requestBody = { url: event.target.elements.url.value, query: 'Tell me more' };
+
+    //   const response = await axios.post(url, requestBody);
+    //   console.log('res-->', response.data);
+    // } catch (error) {
+    //   console.error('Error fetching data:', error);
+    // }
+    setCurrUrl(event.target.elements.url.values);
+  };
+
+  /////////////
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState("");
+
+  const handleMessage = (event) => {
+    setNewMessage({ sender: "user", content: event.target.value });
+  };
+
+  const handleSubmit = async (event) => {
+    setGettingMsg(true);
+    event.preventDefault();
+    let botRes = {};
+    if (newMessage.content.trim() !== "") {
+      event.preventDefault();
+
+      try {
+        const url = "https://7630-1-6-74-117.ngrok-free.app/chatbot";
+        const requestBody = { url: currUrl, query: newMessage.content };
+
+        const response = await axios.post(url, requestBody);
+        console.log("res-->", response.data);
+        botRes = { sender: "bot", content: response.data };
+        const timestamp = serverTimestamp();
+        await addDoc(collection(db, "messages"), {
+          sender: "user",
+          content: inputValue,
+          timestamp: timestamp,
+        });
+        await addDoc(collection(db, "messages"), {
+          sender: "bot",
+          content: response.data,
+          timestamp: timestamp,
+        });
+      } catch (error) {
+        botRes = { sender: "bot", content: "Something went wrong 😔" };
+        console.error("Error fetching data:", error);
+      }
+      setMessages([...messages, newMessage, botRes]);
+      setNewMessage({ sender: "user", content: "" });      
+    }
+    setGettingMsg(false);
+  };
+
   useEffect(() => {
     if (selectedNote) setInputValue(selectedNote.desc);
   }, [selectedNote]);
@@ -175,100 +248,186 @@ function App() {
         }}
         className="flex flex-col gap-3 items-center justify-center"
       >
-        <div className="w-full">
-          <input
-            type="text"
-            placeholder="www.example.com"
-            value={currUrl}
-            className="w-full outline-none border-2 text-black border-slate-200 bg-white rounded-lg p-2 px-4"
-          />
-        </div>
-        <div className="flex flex-row justify-center items-center gap-2">
-          <div className="flex flex-row max-w-[350px] justify-start items-center overflow-x-auto gap-4 px-2">
-            {notes &&
-              notes.map((ele, id) => (
-                <div
-                  key={id}
-                  className=" cursor-pointer relative flex items-center min-w-[100px] max-w-[150px] justify-center p-3 text-black border-slate-200 border-2 rounded-md bg-white"
-                  onClick={() => setSelectedNote(ele)}
-                >
-                  <div
-                    className="absolute top-1 right-1 w-2 h-2 rounded-full border-slate-200 border-2"
-                    style={{ backgroundColor: getColorHex(ele.color) }}
-                  ></div>
-                  <div className="text-xs ">{ele.title}</div>
-                </div>
-              ))}
+        <div className="w-full flex flex-row bg-white text-black rounded-md">
+          <div
+            className={`w-[50%] p-2 border-r-2 border-black cursor-pointer`}
+            onClick={() => setSaveNote(true)}
+          >
+            Notes 📝
           </div>
           <div
-            onClick={() => handleNewNoteClick()}
-            className="cursor-pointer flex items-center justify-center p-2 w-[80px] border-[#e34848] rounded-md bg-[#c7522a]"
+            className={`w-[50%] p-2 cursor-pointer`}
+            onClick={() => setSaveNote(false)}
           >
-            New +
+            Chat 🤖
           </div>
         </div>
-        {/* <div className="w-full h-[400px] bg-white  p-3 flex overflow-y-scroll rounded-lg"> <div className={`text-${selectedNote.desc.length==0 ? 'slate-500' : 'black'}`}>{selectedNote.desc.length==0 ? "Nothing to Show" : selectedNote.desc }</div></div> */}
-        <div className="w-full flex flex-row items-center justify-between p-2">
-          {selectedNote && (
-            <>
-              <div className="text-2xl font-bold">{selectedNote.title}</div>
-              <div className="flex gap-2">
-                {selectedNote.tags &&
-                  selectedNote.tags.slice(0, 2).map((tag, index) => (
+        {saveNote ? (
+          <>
+            <div className="w-full">
+              <form
+                onSubmit={handleUrlSubmit}
+                className=" flex flex-row justify-center items-center gap-5 mb-2"
+              >
+                <input
+                  type="text"
+                  name="url"
+                  placeholder="Enter URL"
+                  className="w-[300px] outline-none border-2 text-black border-slate-200 bg-white rounded-lg p-2 px-4"
+                />
+                <button
+                  type="submit"
+                  className="p-2 px-4 border-2 border-[#e34848] rounded-lg bg-[#c7522a]"
+                >
+                  Save
+                </button>
+              </form>
+            </div>
+            <div className="flex flex-row justify-center items-center gap-2">
+              <div className="flex flex-row max-w-[350px] justify-start items-center overflow-x-auto gap-4 px-2">
+                {notes &&
+                  notes.map((ele, id) => (
                     <div
-                      key={index}
-                      className="text-sm font-medium text-gray-500 p-1 px-3 rounded-full bg-[#b7ffb2] border-[#66ff5b]"
+                      key={id}
+                      className=" cursor-pointer relative flex items-center min-w-[100px] max-w-[150px] justify-center p-3 text-black border-slate-200 border-2 rounded-md bg-white"
+                      onClick={() => setSelectedNote(ele)}
                     >
-                      {tag}
+                      <div
+                        className="absolute top-1 right-1 w-2 h-2 rounded-full border-slate-200 border-2"
+                        style={{ backgroundColor: getColorHex(ele.color) }}
+                      ></div>
+                      <div className="text-xs ">{ele.title}</div>
                     </div>
                   ))}
               </div>
-            </>
-          )}
-        </div>
-        <div className="w-[425px] h-[250px] bg-white border-black p-3 rounded-lg">
-          {selectedNote ? (
-            editMode ? (
-              <textarea
-                value={inputValue}
-                onChange={handleInputChange}
-                className="w-full min-h-full max-h-full outline-none border-2 text-black border-white bg-transparent rounded-xl p-2"
-                placeholder="Enter description (Markdown supported)"
-              ></textarea>
-            ) : (
-              <div className="prose max-w-full max-h-full border-2 text-black border-white bg-transparent rounded-xl p-2 overflow-y-auto text-left">
-                <Markdown>{inputValue}</Markdown>
+              <div
+                onClick={() => handleNewNoteClick()}
+                className="cursor-pointer flex items-center justify-center p-2 w-[80px] border-[#e34848] rounded-md bg-[#c7522a]"
+              >
+                New +
               </div>
-            )
-          ) : (
-            <div className="flex justify-center items-center h-full text-gray-500">
-              Get started by clicking a note or creating a new one
             </div>
-          )}
-        </div>
-        <div className="w-full flex flex-row justify-around items-center">
-          <button
-            onClick={() => setEditMode(!editMode)}
-            disabled={!selectedNote}
-            className="mr-2 p-2 px-4 border-[#e34848] border-2 rounded-md bg-[#c7522a] text-white"
-          >
-            {editMode ? "Preview" : "Edit"}
-          </button>
-          <button
-            onClick={handleSaveClick}
-            disabled={!selectedNote}
-            className="p-2 px-4 border-[#e34848] border-2 rounded-md bg-[#c7522a] text-white"
-          >
-            Save
-          </button>
-        </div>
+            <div className="w-full flex flex-row items-center justify-between p-2">
+              {selectedNote && (
+                <>
+                  <div className="text-2xl font-bold">{selectedNote.title}</div>
+                  <div className="flex gap-2">
+                    {selectedNote.tags &&
+                      selectedNote.tags.slice(0, 2).map((tag, index) => (
+                        <div
+                          key={index}
+                          className="text-sm font-medium text-gray-500 p-1 px-3 rounded-full bg-[#b7ffb2] border-[#66ff5b]"
+                        >
+                          {tag}
+                        </div>
+                      ))}
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="w-[425px] h-[250px] bg-white border-black p-3 rounded-lg">
+              {selectedNote ? (
+                editMode ? (
+                  <textarea
+                    value={inputValue}
+                    onChange={handleInputChange}
+                    className="w-full min-h-full max-h-full outline-none border-2 text-black border-white bg-transparent rounded-xl p-2"
+                    placeholder="Enter description (Markdown supported)"
+                  ></textarea>
+                ) : (
+                  <div className="prose max-w-full max-h-full border-2 text-black border-white bg-transparent rounded-xl p-2 overflow-y-auto text-left">
+                    <Markdown>{inputValue}</Markdown>
+                  </div>
+                )
+              ) : (
+                <div className="flex justify-center items-center h-full text-gray-500">
+                  Get started by clicking a note or creating a new one
+                </div>
+              )}
+            </div>
+            <div className="w-full flex flex-row justify-around items-center">
+              <button
+                onClick={() => setEditMode(!editMode)}
+                disabled={!selectedNote}
+                className="mr-2 p-2 px-4 border-[#e34848] border-2 rounded-md bg-[#c7522a] text-white"
+              >
+                {editMode ? "Preview" : "Edit"}
+              </button>
+              <button
+                onClick={handleSaveClick}
+                disabled={!selectedNote}
+                className="p-2 px-4 border-[#e34848] border-2 rounded-md bg-[#c7522a] text-white"
+              >
+                Save
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="w-[425px]">
+            <div className="w-full rounded-md flex flex-col gap-2">
+              <div className="h-[300px] bg-white rounded-md w-full border-2 border-black text-black overflow-y-auto p-2">
+                {messages.map((message, index) => (
+                  <div
+                    key={index}
+                    className={`w-full flex ${
+                      message.sender == "bot" ? "justify-start" : "justify-end"
+                    }`}
+                  >
+                    <div
+                      className={`${
+                        message.sender == "bot"
+                          ? "bg-[#51ba49]"
+                          : "bg-[#b7ffb2]"
+                      } max-w-[225px] p-2 m-1 border-sm rounded-lg`}
+                    >
+                      {message.content}
+                    </div>
+                  </div>
+                ))}
+                {gettingMsg && (
+                  <div className="max-w-[225px] flex justify-start">
+                    <div className="bg-[#F4442E] p-2 border-sm rounded-lg">
+                      <Comment
+                        visible={true}
+                        height="30"
+                        width="30"
+                        ariaLabel="comment-loading"
+                        color="#fff"
+                        backgroundColor="#F4442E"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+              <form
+                onSubmit={handleSubmit}
+                className="w-full flex flex-row justify-center items-center gap-2"
+              >
+                <input
+                  type="text"
+                  value={newMessage.content}
+                  onChange={handleMessage}
+                  placeholder="Type your message here"
+                  className="h-[50px] w-[80%] bg-white text-black rounded-md p-2"
+                />
+                <button
+                  type="submit"
+                  disabled={gettingMsg}
+                  className="w-[15%] h-[40px] border-[#e34848] border-2 bg-[#c7522a] text-white flex justify-center items-center"
+                >
+                  <LuSend />
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
         <div className="w-full">
           <a
             href={`https://no-clue.vercel.app/`}
             target="_blank"
             className="cursor-pointer text-slate-500 underline text-xs flex justify-center items-center gap-2"
           >
-            Checkout your entire collection <FaExternalLinkAlt />
+            Check out your entire collection <FaExternalLinkAlt />
           </a>
         </div>
       </motion.div>
