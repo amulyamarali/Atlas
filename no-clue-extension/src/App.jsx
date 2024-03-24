@@ -14,7 +14,10 @@ import {
 } from "firebase/firestore";
 import axios from "axios";
 import { LuSend } from "react-icons/lu";
+import { FaFilePdf } from "react-icons/fa6";
 import { Comment } from "react-loader-spinner";
+import { PDFDocument, rgb } from "pdf-lib";
+import { saveAs } from "file-saver";
 
 // const notes = [
 //   {
@@ -79,6 +82,8 @@ function App() {
   const [currUrl, setCurrUrl] = useState("");
   const [saveNote, setSaveNote] = useState(true);
   const [gettingMsg, setGettingMsg] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState('en');
+  const [translation, setTranslation] = useState("");
 
   useEffect(() => {
     const fetchNotes = async () => {
@@ -109,7 +114,9 @@ function App() {
         const messagesRef = collection(db, "messages");
         const snapshot = await getDocs(messagesRef);
         const messagesData = snapshot.docs.map((doc) => doc.data());
-        const sortedMessages = messagesData.sort((a, b) => a.timestamp - b.timestamp);
+        const sortedMessages = messagesData.sort(
+          (a, b) => a.timestamp - b.timestamp
+        );
         setMessages(sortedMessages);
       } catch (error) {
         console.error("Error fetching messages:", error);
@@ -187,7 +194,7 @@ function App() {
     // } catch (error) {
     //   console.error('Error fetching data:', error);
     // }
-    console.log(event.target.value)
+    console.log(event.target.value);
     setCurrUrl(event.target.value);
   };
 
@@ -195,13 +202,44 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
 
+  const createPDF = async () => {
+    try {
+      const pdfDoc = await PDFDocument.create();
+      const { width, height } = await pdfDoc.embedFont('Helvetica');
+
+      notes.forEach((note, index) => {
+        const page = pdfDoc.addPage();
+        const { width, height } = page.getSize();
+
+        page.drawText(note.desc, {
+          x: 50,
+          y: height - 100,
+          size: 12,
+          color: rgb(0, 0, 0),
+        });
+      });
+
+      const pdfBytes = await pdfDoc.save();
+      saveAs(new Blob([pdfBytes], { type: "application/pdf" }), "combined_notes.pdf");
+      console.log('PDF file has been saved!');
+    } catch (error) {
+      console.error("Error creating PDF:", error);
+    }
+  };
+
   const handleMessage = (event) => {
     setNewMessage({ sender: "user", content: event.target.value });
   };
 
   const handleSubmit = async (event) => {
-    if(currUrl==""){
-      setMessages([...messages, {sender: 'bot', content: 'Please enter a valid URL in the prev section'}]);
+    if (currUrl == "") {
+      setMessages([
+        ...messages,
+        {
+          sender: "bot",
+          content: "Please enter a valid URL in the prev section",
+        },
+      ]);
       setNewMessage({ sender: "user", content: "" });
     }
     setGettingMsg(true);
@@ -249,6 +287,22 @@ function App() {
     setGettingMsg(false);
   };
 
+  const translate = async () => {
+    try {
+      const url = "https://7630-1-6-74-117.ngrok-free.app/translate"; 
+      const requestBody = { text: inputValue, lang: selectedLanguage };
+      const response = await axios.post(url, requestBody);
+      console.log(response.data.translation);
+      setTranslation(response.data.translation);
+    } catch (error) {
+      console.error("Error translating text:", error);
+    }
+  };
+
+  const handleTranslateClick = () => {
+    translate();
+  };
+
   useEffect(() => {
     if (selectedNote) setInputValue(selectedNote.desc);
   }, [selectedNote]);
@@ -265,30 +319,38 @@ function App() {
         }}
         className="flex flex-col gap-3 items-center justify-center"
       >
-        <div className="w-[80%] flex-row bg-white text-black rounded-md flex justify-center items-center">
+        <div className="w-full flex flex-row justify-between items-center">
+        <div className="w-[90%] flex-row bg-white text-black rounded-md flex justify-center items-center">
           <div
-            className={`w-[40%] p-2 border-r-2 border-black cursor-pointer`}
+            className={`w-[45%] p-2 border-r-2 border-black cursor-pointer`}
             onClick={() => setSaveNote(true)}
           >
             Notes 📝
           </div>
           <div
-            className={`w-[40%] p-2 cursor-pointer`}
+            className={`w-[45%] p-2 cursor-pointer`}
             onClick={() => setSaveNote(false)}
           >
             Chat 🤖
           </div>
         </div>
+        <div className="p-2 flex justify-center items-center rounded-md bg-white text-black cursor-pointer" onClick={createPDF}><FaFilePdf /></div></div>
         {saveNote ? (
           <>
             <div className="w-full">
               <div className=" flex flex-row justify-center items-center gap-5 mb-2">
-                <button
-                  type="submit"
-                  className="p-2 px-4 border-2 border-[#e34848] rounded-lg bg-[#c7522a]"
+                <select
+                  value={selectedLanguage}
+                  onChange={(e) => setSelectedLanguage(e.target.value)}
+                  className="p-2 border-2 border-[#e34848] rounded-lg bg-[#c7522a]"
                 >
-                  Lang
-                </button>
+                  <option value="en">English</option>
+                  <option value="hi">Hindi</option>
+                  <option value="kn">Kannada</option>
+                  <option value="ta">Tamil</option>
+                  <option value="t">Telegu</option>
+
+                </select>
                 <input
                   type="text"
                   name="url"
@@ -371,6 +433,12 @@ function App() {
                 className="mr-2 p-2 px-4 border-[#e34848] border-2 rounded-md bg-[#c7522a] text-white"
               >
                 {editMode ? "Preview" : "Edit"}
+              </button>
+                <button
+                onClick={handleTranslateClick}
+                className="p-2 px-4 border-[#e34848] border-2 rounded-md bg-[#c7522a] text-white"
+              >
+                Translate
               </button>
               <button
                 onClick={handleSaveClick}
