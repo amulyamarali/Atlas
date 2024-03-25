@@ -1,22 +1,30 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-from bot import scrape_content, split_text_into_chunks, create_embeddings, create_vector_store, create_llms_model
-from langchain.memory import ConversationBufferMemory
-from langchain.chains import ConversationalRetrievalChain
+from helper import scrape_content_from_url, query_openai_api
+import openai
+import requests
+from bs4 import BeautifulSoup
+# from googletrans import Translator
+from deep_translator import GoogleTranslator
+
+from dotenv import load_dotenv
+import os
+
+
 
 
 url_list = []
-chain = None
 
 app = Flask(__name__)
 CORS(app)  
 
-def conversation_chat(query, chain):
-            result = chain({"question": query, "chat_history": []})
-            return result["answer"]
+load_dotenv()  
+API_KEY = os.getenv('API_KEY')
+
+openai.api_key = API_KEY
 
 
-@app.route('/chatbot', methods=['GET'])
+@app.route('/chatbot', methods=['POST'])
 def get_data():
     data = request.json
     url = data.get('url')
@@ -27,29 +35,31 @@ def get_data():
 
     # Scrape content from URL
     if url not in url_list:
-        url_list.append(url)
-        scraped_text = scrape_content(url)
-        text_chunks = split_text_into_chunks(scraped_text)
-        embeddings = create_embeddings()
-        vector_store = create_vector_store(text_chunks, embeddings)
-        llm = create_llms_model()
-        memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-        global chain 
-        chain = ConversationalRetrievalChain.from_llm(llm=llm, chain_type='stuff',
-                                                        retriever=vector_store.as_retriever(search_kwargs={"k": 2}),
-                                                        memory=memory)
-    answer = conversation_chat(query, chain)
-    return jsonify({'message': answer})
+        ucontent = scrape_content_from_url(url)
+        response = query_openai_api(ucontent, query)
+    
+    return jsonify({'message': response})
 
+@app.route('/translate', methods=['POST'])
+def translate():
+    data = request.json
+    text = data.get('text')
+    lang1 = data.get('lang1')
+    # lang2 = data.get('lang2')
+    print('Received Text:', text)
+    translator1 = GoogleTranslator(source='en', target=lang1)
+    # translator2 = GoogleTranslator(source='en', target=lang2)
 
+    translation1 = translator1.translate(text)
+    # translation2 = translator2.translate(text)
+    return jsonify({'lang1': translation1,})
 
-
-
-
-
-
-
-    return jsonify({'message': url})
+# @app.route('/url', methods=['POST'])   
+# def post_url():
+#     data = request.json
+#     url = data.get('url')
+#     url_list.append(url)
+#     return jsonify({'message': 'URL added successfully'})
 
 
 if __name__ == "__main__":
