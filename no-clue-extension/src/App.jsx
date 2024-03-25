@@ -250,7 +250,7 @@ function App() {
       const timestamp = serverTimestamp();
 
       try {
-        const url = "https://cd2a-106-221-194-3.ngrok-free.app/chatbot";
+        const url = "https://e9dc-1-6-74-117.ngrok-free.app/chatbot";
         const requestBody = {
           url: currUrl,
           query: newMessage.content,
@@ -289,7 +289,7 @@ function App() {
 
   const translate = async () => {
     try {
-      const url = "https://cd2a-106-221-194-3.ngrok-free.app/translate"; 
+      const url = "https://e9dc-1-6-74-117.ngrok-free.app/translate"; 
       const requestBody = { text: inputValue, lang1: selectedLanguage };
       const response = await axios.post(url, requestBody);
       console.log(response.data.lang1);
@@ -511,7 +511,7 @@ function App() {
         )}
         <div className="w-full">
           <a
-            href={`https://no-clue.vercel.app/`}
+            href={`https://atlas-notes.vercel.app/`}
             target="_blank"
             className="cursor-pointer text-slate-500 underline text-xs flex justify-center items-center gap-2"
           >
