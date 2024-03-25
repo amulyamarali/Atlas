@@ -9,3 +9,4 @@ tiktoken
 huggingface-hub
 pypdf
 ctransformers
+flask
